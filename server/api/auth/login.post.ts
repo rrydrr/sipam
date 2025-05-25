@@ -31,6 +31,7 @@ export default defineEventHandler(async (event) => {
 
     const jwtSecret = process.env.JWT_SECRET;
     if (!jwtSecret) {
+      console.error("JWT_SECRET is not defined in environment variables.");
       setResponseStatus(event, 500);
       return {
         success: false,
@@ -59,10 +60,11 @@ export default defineEventHandler(async (event) => {
         message: "Bad request.",
       };
     } else {
+      console.error("Auth login API error:", (e as Error).message);
       setResponseStatus(event, 500);
       return {
         success: false,
-        message: "An unexpected error occurred during login.",
+        message: "An unexpected error occurred.",
         // error: (e as Error).message,
       };
     }
