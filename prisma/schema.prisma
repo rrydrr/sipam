@@ -18,7 +18,7 @@ model User {
   level      Int
   isActive   Boolean
   created_at DateTime @default(now())
-  updated_at DateTime @updatedAt
+  updated_at DateTime @default(now()) @updatedAt
   cabang     Cabang?  @relation(fields: [idCabang], references: [id])
   order      Order[]
 }
@@ -29,7 +29,7 @@ model Cabang {
   isOpen     Boolean
   lastOpened DateTime @db.Date
   created_at DateTime @default(now())
-  updated_at DateTime @updatedAt
+  updated_at DateTime @default(now()) @updatedAt
   users      User[]
   meja       Meja[]
   Order      Order[]
@@ -43,7 +43,7 @@ model Menu {
   price       Int
   isActive    Boolean
   created_at  DateTime @default(now())
-  updated_at  DateTime @updatedAt
+  updated_at  DateTime @default(now()) @updatedAt
   Item        Item[]
 }
 
@@ -53,8 +53,8 @@ model Meja {
   no         Int
   isReady    Boolean
   created_at DateTime @default(now())
-  updated_at DateTime @updatedAt
-  cabang     Cabang   @relation(fields: [idCabang], references: [id])
+  updated_at DateTime @default(now()) @updatedAt
+  cabang     Cabang?  @relation(fields: [idCabang], references: [id])
   order      Order[]
 }
 
@@ -65,21 +65,24 @@ model Order {
   idMeja     Int
   total      Int
   isPaid     Boolean
+  isDone     Boolean
   created_at DateTime @default(now())
-  updated_at DateTime @updatedAt
-  user       User     @relation(fields: [idUser], references: [id])
-  cabang     Cabang   @relation(fields: [idCabang], references: [id])
-  meja       Meja     @relation(fields: [idMeja], references: [id])
+  updated_at DateTime @default(now()) @updatedAt
+  user       User?    @relation(fields: [idUser], references: [id])
+  cabang     Cabang?  @relation(fields: [idCabang], references: [id])
+  meja       Meja?    @relation(fields: [idMeja], references: [id])
   Item       Item[]
 }
 
 model Item {
-  id          String  @id @default(uuid())
+  id          String   @id @default(uuid())
   idMenu      Int
   idOrder     String
   qty         Int
   price       Int
   isDelivered Boolean
-  menu        Menu    @relation(fields: [idMenu], references: [id])
-  order       Order   @relation(fields: [idOrder], references: [id])
+  created_at  DateTime @default(now())
+  updated_at  DateTime @default(now()) @updatedAt
+  menu        Menu?    @relation(fields: [idMenu], references: [id])
+  order       Order?   @relation(fields: [idOrder], references: [id])
 }
