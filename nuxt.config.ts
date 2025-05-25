@@ -19,4 +19,7 @@ export default defineNuxtConfig({
       },
     },
   },
+  security: {
+    
+  }
 })

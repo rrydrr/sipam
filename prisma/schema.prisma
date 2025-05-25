@@ -12,20 +12,74 @@ datasource db {
 
 model User {
   id         Int      @id @default(autoincrement())
-  idCabang   Int
-  username   String   @unique
-  password   String
+  idCabang   Int?
+  username   String   @unique @db.VarChar(255)
+  password   String   @db.VarChar(255)
   level      Int
   isActive   Boolean
   created_at DateTime @default(now())
   updated_at DateTime @updatedAt
-  cabang     Cabang   @relation(fields: [idCabang], references: [id])
+  cabang     Cabang?  @relation(fields: [idCabang], references: [id])
+  order      Order[]
 }
 
 model Cabang {
   id         Int      @id @default(autoincrement())
-  name       String
+  name       String   @db.VarChar(255)
+  isOpen     Boolean
+  lastOpened DateTime @db.Date
   created_at DateTime @default(now())
   updated_at DateTime @updatedAt
   users      User[]
+  meja       Meja[]
+  Order      Order[]
+}
+
+model Menu {
+  id          Int      @id @default(autoincrement())
+  name        String   @db.VarChar(255)
+  description String
+  image       String   @db.VarChar(255)
+  price       Int
+  isActive    Boolean
+  created_at  DateTime @default(now())
+  updated_at  DateTime @updatedAt
+  Item        Item[]
+}
+
+model Meja {
+  id         Int      @id @default(autoincrement())
+  idCabang   Int
+  no         Int
+  isReady    Boolean
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+  cabang     Cabang   @relation(fields: [idCabang], references: [id])
+  order      Order[]
+}
+
+model Order {
+  id         String   @id @default(uuid())
+  idUser     Int
+  idCabang   Int
+  idMeja     Int
+  total      Int
+  isPaid     Boolean
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+  user       User     @relation(fields: [idUser], references: [id])
+  cabang     Cabang   @relation(fields: [idCabang], references: [id])
+  meja       Meja     @relation(fields: [idMeja], references: [id])
+  Item       Item[]
+}
+
+model Item {
+  id          String  @id @default(uuid())
+  idMenu      Int
+  idOrder     String
+  qty         Int
+  price       Int
+  isDelivered Boolean
+  menu        Menu    @relation(fields: [idMenu], references: [id])
+  order       Order   @relation(fields: [idOrder], references: [id])
 }
