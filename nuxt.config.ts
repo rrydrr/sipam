@@ -37,6 +37,10 @@ export default defineNuxtConfig({
     },
   },
   security: {
+    rateLimiter: {
+      tokensPerInterval: 100,
+      interval: 300000, // 5 minutes
+    },
     csrf: {
       enabled: process.env.NODE_ENV === "production",
       cookie: {

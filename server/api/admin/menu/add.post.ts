@@ -150,15 +150,6 @@ export default defineEventHandler(async (event: H3Event) => {
             success: true,
             message: "Berhasil membuat order.",
             data: {
-              order: {
-                id: updatedOrder.id,
-                idMeja: updatedOrder.idMeja,
-                idUser: updatedOrder.idUser,
-                idCabang: updatedOrder.idCabang,
-                total: updatedOrder.total,
-                isPaid: updatedOrder.isPaid,
-                isDone: updatedOrder.isDone,
-              },
               qrCode: `data:image/png;base64,${qrCodeBuffer.toString(
                 "base64"
               )}`,
