@@ -20,7 +20,11 @@ export default defineEventHandler(async (event) => {
       },
     });
 
-    if (!user || !(await bcrypt.compare(password, user.password))) {
+    if (
+      !user ||
+      !(await bcrypt.compare(password, user.password)) ||
+      !user.isActive
+    ) {
       setResponseStatus(event, 401);
       return {
         success: false,

@@ -39,7 +39,7 @@ model Menu {
   id          Int      @id @default(autoincrement())
   name        String   @db.VarChar(255)
   description String
-  image       String   @db.VarChar(255)
+  image       Bytes?
   price       Int
   isActive    Boolean
   created_at  DateTime @default(now())
@@ -64,6 +64,7 @@ model Order {
   idCabang   Int
   idMeja     Int
   total      Int
+  qrCode     Bytes?
   isPaid     Boolean
   isDone     Boolean
   created_at DateTime @default(now())
