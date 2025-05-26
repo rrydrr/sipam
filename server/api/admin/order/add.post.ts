@@ -11,6 +11,10 @@ const jwtPayloadSchema = z.object({
   iat: z.number(),
 });
 
+const bodySchema = z.object({
+  idMeja: z.number(),
+}).strict();
+
 function invalidTokenResponse(event: H3Event) {
   setResponseStatus(event, 401);
   return {
@@ -71,37 +75,47 @@ export default defineEventHandler(async (event: H3Event) => {
       return invalidTokenResponse(event);
     }
 
+    const parsedBody = bodySchema.parse(await readBody(event));
+
     let cabang = null;
-    let orders: any = [];
     if (user.idCabang != null) {
       cabang = await prisma.cabang.findUnique({
         where: { id: user.idCabang },
       });
       if (cabang) {
-        orders = await prisma.order.findMany({
-          where: { idCabang: cabang.id, isDone: false },
-          include: {
-            Item: true, // Assumes there is a relation named 'item' in your Prisma schema
+        const order = await prisma.order.create({
+          data: {
+            idCabang: cabang.id,
+            idUser: user.id,
+            idMeja: parsedBody.idMeja,
+            total: 0,
+            isPaid: false,
+            isDone: false
           },
         });
+        console.log("Order created:", order);
+        setResponseStatus(event, 200);
+        return {
+          success: true,
+          message: "Berhasil membuat order.",
+        }
       }
     }
 
-    setResponseStatus(event, 200);
+    setResponseStatus(event, 400);
     return {
-      success: true,
-      message: `Welcome to the Admin Dashboard, ${user.username}!`,
-      userData: {
-        username: user.username,
-        level: user.level,
-        lastLogin: new Date().toISOString(),
-      },
-      data: {
-        cabang: cabang,
-        orders: orders,
-      },
-    };
+      success: false,
+      message: "Bad request.",
+    }
   } catch (error) {
+    if (error instanceof z.ZodError) {
+      setResponseStatus(event, 400);
+      return {
+        success: false,
+        message: "Invalid request body.",
+        errors: error.errors,
+      };
+    }
     console.error("Admin dashboard API error:", error);
     setResponseStatus(event, 500);
     return {
@@ -109,4 +123,4 @@ export default defineEventHandler(async (event: H3Event) => {
       message: "An unexpected error occurred.",
     };
   }
-});
+})

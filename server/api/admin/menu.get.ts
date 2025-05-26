@@ -71,34 +71,13 @@ export default defineEventHandler(async (event: H3Event) => {
       return invalidTokenResponse(event);
     }
 
-    let cabang = null;
-    let orders: any = [];
-    if (user.idCabang != null) {
-      cabang = await prisma.cabang.findUnique({
-        where: { id: user.idCabang },
-      });
-      if (cabang) {
-        orders = await prisma.order.findMany({
-          where: { idCabang: cabang.id, isDone: false },
-          include: {
-            Item: true, // Assumes there is a relation named 'item' in your Prisma schema
-          },
-        });
-      }
-    }
+    const menu = await prisma.menu.findMany({});
 
     setResponseStatus(event, 200);
     return {
       success: true,
-      message: `Welcome to the Admin Dashboard, ${user.username}!`,
-      userData: {
-        username: user.username,
-        level: user.level,
-        lastLogin: new Date().toISOString(),
-      },
       data: {
-        cabang: cabang,
-        orders: orders,
+        menu: menu,
       },
     };
   } catch (error) {

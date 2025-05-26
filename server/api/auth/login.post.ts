@@ -2,7 +2,6 @@ import prisma from "~/lib/prisma";
 import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
 import { z } from "zod";
-import { success } from "zod/v4";
 
 const loginSchema = z
   .object({
@@ -57,7 +56,8 @@ export default defineEventHandler(async (event) => {
       setResponseStatus(event, 400);
       return {
         success: false,
-        message: "Bad request.",
+        message: "Invalid request body.",
+        errors: e.errors,
       };
     } else {
       console.error("Auth login API error:", (e as Error).message);
