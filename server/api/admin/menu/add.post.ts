@@ -1,36 +1,38 @@
-import { H3Event, getRequestHeaders, setResponseStatus } from "h3";
+import {
+  H3Event,
+  getRequestHeaders,
+  setResponseStatus,
+  readMultipartFormData,
+} from "h3";
 import jwt from "jsonwebtoken";
 import { z } from "zod";
 import prisma from "~/lib/prisma";
-import QRCodeGenerator from "qrcode"; // Library to generate QR codes
 
 const jwtPayloadSchema = z.object({
   idUser: z.number(),
   username: z.string(),
-  iss: z.string().optional(),
-  exp: z.number(),
-  iat: z.number(),
+  iss: z.string().optional(), // Issuer
+  exp: z.number(), // Expiration Time
+  iat: z.number(), // Issued At
 });
 
-const bodySchema = z
-  .object({
-    idMeja: z.number(),
-  })
-  .strict();
+// Schema for the text fields we expect in the form-data for creating a menu item
+const menuFormDataSchema = z.object({
+  name: z.string().min(1, "Menu name is required"),
+  price: z
+    .string()
+    .refine((val) => !isNaN(parseFloat(val)) && parseFloat(val) > 0, {
+      message: "Price must be a positive number",
+    }),
+  description: z.string().optional(),
+});
 
+// Helper function to send a 401 Unauthorized response
 function invalidTokenResponse(event: H3Event) {
   setResponseStatus(event, 401);
   return {
     success: false,
     message: "Invalid or expired token.",
-  };
-}
-
-function internalServerErrorResponse(event: H3Event) {
-  setResponseStatus(event, 500);
-  return {
-    success: false,
-    message: "Internal server error.",
   };
 }
 
@@ -57,7 +59,7 @@ export default defineEventHandler(async (event: H3Event) => {
       setResponseStatus(event, 500);
       return {
         success: false,
-        message: "Internal server error.",
+        message: "Internal server error (JWT_SECRET missing).",
       };
     }
 
@@ -66,7 +68,6 @@ export default defineEventHandler(async (event: H3Event) => {
       const verified = jwt.verify(token, jwtSecret, {
         issuer: expectedIssuer,
       }) as object;
-
       decodedPayload = jwtPayloadSchema.parse(verified);
     } catch (verifyError) {
       if (
@@ -86,94 +87,107 @@ export default defineEventHandler(async (event: H3Event) => {
       return invalidTokenResponse(event);
     }
 
-    const parsedBody = bodySchema.parse(await readBody(event));
+    const formData = await readMultipartFormData(event);
+    if (!formData) {
+      setResponseStatus(event, 400);
+      return { success: false, message: "Form data is missing." };
+    }
 
-    let cabang = null;
-    if (user.idCabang != null) {
-      cabang = await prisma.cabang.findUnique({
-        where: { id: user.idCabang },
-      });
-      if (cabang) {
-        if (cabang.isOpen) {
-          const order = prisma.order.create({
-            data: {
-              idMeja: parsedBody.idMeja,
-              idUser: user.id,
-              idCabang: user.idCabang,
-              total: 0,
-              isPaid: false,
-              isDone: false,
-            },
-          });
+    const menuData: Record<string, string | undefined> = {};
+    let imageFile:
+      | { filename?: string; type?: string; data: Buffer }
+      | undefined = undefined;
 
-          const baseUrl = process.env.BASE_URL || "http://localhost:3000";
-          const token = jwt.sign(
-            {
-              idOrder: (await order).id,
-              idMeja: (await order).idMeja,
-              idCabang: cabang.id,
-            },
-            jwtSecret,
-            { expiresIn: "12h", issuer: baseUrl }
-          );
-
-          const originalData = `${expectedIssuer}/order/${
-            (await order).id
-          }/?token=${token}`;
-          // 2. Generate the QR code as a Buffer (bytes)
-          let qrCodeBuffer: Buffer;
-          try {
-            qrCodeBuffer = await QRCodeGenerator.toBuffer(originalData, {
-              errorCorrectionLevel: "H", // High error correction
-              type: "png", // Specify output type as png for buffer
-              margin: 2,
-              scale: 8, // Size of the QR code modules
-            });
-          } catch (qrError: any) {
-            console.error("QR Code generation failed:", qrError);
-            return internalServerErrorResponse(event);
-          }
-
-          if (!qrCodeBuffer || qrCodeBuffer.length === 0) {
-            return internalServerErrorResponse(event);
-          }
-
-          const updatedOrder = await prisma.order.update({
-            where: { id: (await order).id },
-            data: {
-              qrCode: qrCodeBuffer,
-            },
-          });
-
-          setResponseStatus(event, 200);
-          return {
-            success: true,
-            message: "Berhasil membuat order.",
-            data: {
-              qrCode: `data:image/png;base64,${qrCodeBuffer.toString(
-                "base64"
-              )}`,
-            },
+    for (const part of formData) {
+      if (part.name === "image") {
+        if (part.filename && part.type && part.data) {
+          imageFile = {
+            filename: part.filename,
+            type: part.type,
+            data: part.data,
           };
         }
+      } else if (part.name && part.data !== undefined) {
+        menuData[part.name] = part.data.toString();
       }
     }
 
-    setResponseStatus(event, 400);
-    return {
-      success: false,
-      message: "Bad request.",
-    };
+    const parsedMenuData = menuFormDataSchema.safeParse({
+      name: menuData.name,
+      price: menuData.price,
+      description: menuData.description,
+    });
+
+    if (!parsedMenuData.success) {
+      setResponseStatus(event, 400);
+      return {
+        success: false,
+        message: "Invalid menu data.",
+        errors: parsedMenuData.error.flatten().fieldErrors,
+      };
+    }
+
+    if (
+      !imageFile ||
+      !imageFile.data ||
+      imageFile.data.length === 0 ||
+      imageFile.type !== "image/webp"
+    ) {
+      // Check if data buffer exists and is not empty
+      setResponseStatus(event, 400);
+      return {
+        success: false,
+        message: "Menu image data is required or image type is not webp.",
+      };
+    }
+
+    const imageBase64 = Buffer.from(imageFile.data).toString("base64");
+
+    // --- Create Menu Item in Database with Image Bytes ---
+    const { name, price, description } = parsedMenuData.data;
+    const numericPrice = parseFloat(price);
+
+    try {
+      const newMenu = await prisma.menu.create({
+        data: {
+          name: name,
+          price: numericPrice,
+          description: description || "",
+          image: imageFile.data, // Store the image Buffer directly
+          isActive: true, // Default to active
+        },
+      });
+
+      setResponseStatus(event, 201); // 201 Created
+      return {
+        success: true,
+        message: "Menu item created successfully with image stored in DB.",
+        data: {
+          id: newMenu.id, // Return only non-sensitive data, not the image bytes in response
+          name: newMenu.name,
+          price: newMenu.price,
+          description: newMenu.description,
+        },
+      };
+    } catch (dbError) {
+      console.error("Failed to create menu item in database:", dbError);
+      setResponseStatus(event, 500);
+      // No file cleanup needed as we are not saving to filesystem
+      return {
+        success: false,
+        message: "Failed to create menu item in database.",
+      };
+    }
   } catch (error) {
     if (error instanceof z.ZodError) {
       setResponseStatus(event, 400);
       return {
         success: false,
-        message: "Invalid request body.",
+        message: "Invalid request data.",
         errors: error.errors,
       };
     }
-    console.error("Admin dashboard API error:", error);
+    console.error("Admin create menu API error:", error);
     setResponseStatus(event, 500);
     return {
       success: false,

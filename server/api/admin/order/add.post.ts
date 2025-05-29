@@ -110,8 +110,6 @@ export default defineEventHandler(async (event: H3Event) => {
           const token = jwt.sign(
             {
               idOrder: (await order).id,
-              idMeja: (await order).idMeja,
-              idCabang: cabang.id,
             },
             jwtSecret,
             { expiresIn: "12h", issuer: baseUrl }
@@ -144,7 +142,7 @@ export default defineEventHandler(async (event: H3Event) => {
               qrCode: qrCodeBuffer,
             },
           });
-
+          console.log('Token:', token);
           setResponseStatus(event, 200);
           return {
             success: true,
@@ -165,6 +163,11 @@ export default defineEventHandler(async (event: H3Event) => {
             },
           };
         }
+        setResponseStatus(event, 400);
+        return {
+          success: false,
+          message: "Cabang tutup, Harap buka cabang terlebih dahulu.",
+        };
       }
     }
 
