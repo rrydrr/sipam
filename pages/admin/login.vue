@@ -118,7 +118,7 @@ const setCookie = (name: string, value: string, days: number) => {
     "=" +
     (value || "") +
     expires +
-    "; path=/; SameSite=Lax" +
+    "; path=/; SameSite=Strict" +
     secureFlag;
 };
 

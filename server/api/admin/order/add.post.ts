@@ -95,6 +95,18 @@ export default defineEventHandler(async (event: H3Event) => {
       });
       if (cabang) {
         if (cabang.isOpen) {
+          const meja = await prisma.meja.findMany({
+            where: { idCabang: user.idCabang },
+          });
+
+          if (!meja.some((m) => m.id === parsedBody.idMeja)) {
+            setResponseStatus(event, 400);
+            return {
+              success: false,
+              message: `Meja dengan ID ${parsedBody.idMeja} tidak ditemukan di cabang ini.`,
+            };
+          }
+
           const order = prisma.order.create({
             data: {
               idMeja: parsedBody.idMeja,
@@ -142,7 +154,7 @@ export default defineEventHandler(async (event: H3Event) => {
               qrCode: qrCodeBuffer,
             },
           });
-          console.log('Token:', token);
+          console.log("Token:", token);
           setResponseStatus(event, 200);
           return {
             success: true,

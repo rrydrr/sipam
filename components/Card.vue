@@ -1,45 +1,45 @@
 <script setup>
-import { computed } from 'vue';
+import { computed } from "vue";
 
 const props = defineProps({
   // Props for the container styling
   bgColor: {
     type: String,
-    default: 'bg-white',
+    default: "bg-white",
   },
   padding: {
     type: String,
-    default: 'p-8',
+    default: "p-8",
   },
   rounded: {
     type: String,
-    default: 'rounded-lg',
+    default: "rounded-lg",
   },
   shadow: {
     type: String,
-    default: 'shadow-md',
+    default: "shadow-md",
   },
   maxWidth: {
     type: String,
-    default: '',
+    default: "",
   },
   width: {
     type: String,
-    default: 'w-full',
+    default: "w-full",
   },
   margin: {
     type: String,
-    default: 'mx-4',
+    default: "",
   },
   textAlign: {
     type: String,
-    default: 'text-center',
+    default: "text-center",
   },
   // Add a prop for the 'hidden sm:block' behavior if you want to control it
   displayClasses: {
     type: String,
-    default: '', // Default to the original behavior
-  }
+    default: "", // Default to the original behavior
+  },
 });
 
 // Compute the dynamic class string for the parent div
@@ -54,7 +54,7 @@ const containerClasses = computed(() => {
     props.width,
     props.margin,
     props.textAlign,
-  ].join(' ');
+  ].join(" ");
 });
 </script>
 

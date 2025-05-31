@@ -51,12 +51,12 @@ export default defineNuxtConfig({
         "img-src": ["'self'", "data:"],
       },
     },
-    rateLimiter: {
-      tokensPerInterval: 100,
-      interval: 300000, // 5 minutes
-    },
+    // rateLimiter: {
+    //   tokensPerInterval: 100,
+    //   interval: 300000, // 5 minutes
+    // },
     csrf: {
-      enabled: true,
+      enabled: false,
       cookie: {
         httpOnly: true,
         secure: process.env.NODE_ENV === "production",

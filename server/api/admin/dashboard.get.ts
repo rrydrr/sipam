@@ -81,7 +81,15 @@ export default defineEventHandler(async (event: H3Event) => {
         orders = await prisma.order.findMany({
           where: { idCabang: cabang.id, isDone: false },
           include: {
-            Item: true, // Assumes there is a relation named 'item' in your Prisma schema
+            Item: {
+              include: {
+                menu: {
+                  select: {
+                    name: true,
+                  },
+                },
+              },
+            },
           },
         });
       }
@@ -98,7 +106,46 @@ export default defineEventHandler(async (event: H3Event) => {
       },
       data: {
         cabang: cabang,
-        orders: orders,
+        orders: await Promise.all(
+          orders.map(
+            async (order: {
+              id: any;
+              total: any;
+              isDone: any;
+              isPaid: any;
+              Item: any[];
+              meja: any;
+            }) => {
+              const meja = await prisma.meja.findFirst({
+                where: { id: order.meja },
+                select: { no: true },
+              });
+
+              return {
+                id: order.id,
+                meja: meja?.no ?? null,
+                total: order.total,
+                isDone: order.isDone,
+                isPaid: order.isPaid,
+                items: order.Item.map(
+                  (item: {
+                    price: any;
+                    id: any;
+                    menu: { name: any };
+                    qty: any;
+                    isDelivered: any;
+                  }) => ({
+                    id: item.id,
+                    name: item.menu.name,
+                    qty: item.qty,
+                    price: item.price,
+                    isDelivered: item.isDelivered,
+                  })
+                ),
+              };
+            }
+          )
+        ),
       },
     };
   } catch (error) {
