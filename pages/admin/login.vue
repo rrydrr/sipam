@@ -4,7 +4,7 @@
       src="/logo.png"
       alt="logo"
       class="mx-auto mb-4 w-20 h-20 object-contain"
-      onerror="this.style.display='none'; const placeholder = document.createElement('div'); placeholder.className = 'mx-auto mb-4 w-20 h-20 bg-gray-300 flex items-center justify-center rounded'; placeholder.textContent = 'Logo'; this.parentNode.insertBefore(placeholder, this);"
+      @error="handleImageError"
     />
     <h2 class="text-2xl font-semibold mb-6 text-center">Admin Login</h2>
     <form @submit.prevent="handleSubmit">
@@ -49,6 +49,26 @@
 <script lang="ts" setup>
 import { ref } from "vue";
 import { navigateTo } from "#app";
+
+const imageError = ref(false);
+
+const handleImageError = (event: Event) => {
+  imageError.value = true;
+  const target = event.target as HTMLImageElement;
+  if (target && target.parentNode) {
+    // Remove the broken image
+    target.remove();
+
+    // Create a placeholder and insert it
+    const placeholder = document.createElement("div");
+    placeholder.className =
+      "mx-auto mb-4 w-20 h-20 bg-gray-300 flex items-center justify-center rounded";
+    placeholder.textContent = "Logo";
+
+    target.parentNode.insertBefore(placeholder, target.nextSibling);
+  }
+};
+
 interface LoginResponse {
   success: boolean;
   token?: string;
