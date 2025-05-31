@@ -37,6 +37,20 @@ export default defineNuxtConfig({
     },
   },
   security: {
+    headers: {
+      contentSecurityPolicy: {
+        "default-src": ["'self'"],
+        "script-src": ["'self'", "'unsafe-inline'", "'unsafe-eval'"],
+        "style-src": [
+          "'self'",
+          "'unsafe-inline'",
+          "https://fonts.googleapis.com",
+        ],
+        "font-src": ["'self'", "https://fonts.gstatic.com"],
+        "connect-src": ["'self'"],
+        "img-src": ["'self'", "data:"],
+      },
+    },
     rateLimiter: {
       tokensPerInterval: 100,
       interval: 300000, // 5 minutes
