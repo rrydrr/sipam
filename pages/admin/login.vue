@@ -1,6 +1,10 @@
 <template>
   <Card :max-width="'max-w-md'">
-    <img src="/logo.png" alt="logo" class="mx-auto mb-4 w-20 h-20 object-contain" />
+    <img
+      src="/logo.png"
+      alt="logo"
+      class="mx-auto mb-4 w-20 h-20 object-contain"
+    />
     <h2 class="text-2xl font-semibold mb-6 text-center">Admin Login</h2>
     <Input
       v-model="username"
@@ -49,5 +53,29 @@ const validateUsername = () => {
   } else {
     usernameError.value = ""; // No error
   }
+};
+
+const validatePassword = () => {
+  if (password.value.length === 0) {
+    passwordError.value = "Password is required.";
+  } else if (password.value.length < 8) {
+    passwordError.value = "Password must be at least 8 characters.";
+  } else {
+    passwordError.value = ""; // No error
+  }
+};
+const handleSubmit = () => {
+  validateUsername();
+  validatePassword();
+
+  if (usernameError.value || passwordError.value) {
+    return; // Prevent submission if there are validation errors
+  }
+
+  // Proceed with login logic here
+  console.log("Logging in with", {
+    username: username.value,
+    password: password.value,
+  });
 };
 </script>
