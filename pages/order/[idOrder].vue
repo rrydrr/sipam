@@ -352,6 +352,7 @@ const currentOrderStatus = ref<OrderWithStatus | null>(null);
 const isLoadingOrderStatus = ref(false); // Separate loading state for order status
 const orderStatusError = ref<string | null>(null);
 
+// --- Function to fetch Menu Data ---
 async function fetchMenuData() {
   if (!tokenForDisplay.value) {
     menuError.value = "Authentication token not available. Cannot fetch menu.";
