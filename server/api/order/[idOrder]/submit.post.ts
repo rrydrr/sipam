@@ -158,7 +158,6 @@ export default defineEventHandler(async (event) => {
 
     try {
       updatedOrderResult = await prisma.$transaction(async (tx) => {
-        // 1. Update Order's note (if provided)
         if (parsedBody.order.note !== undefined) {
           await tx.order.update({
             where: { id: idOrderFromParam },
@@ -170,6 +169,26 @@ export default defineEventHandler(async (event) => {
 
         const inputMenuItems = parsedBody.order.item;
         const inputMenuIds = inputMenuItems.map((item) => item.id);
+
+        // OPTIMIZATION: Fetch all relevant menu items at once
+        const menus = await tx.menu.findMany({
+          where: {
+            id: { in: inputMenuIds }, // Fetch all menus whose IDs are in the input
+          },
+        });
+
+        // Create a Map for quick lookup: menuId -> menuObject
+        const menuMap = new Map(menus.map((menu) => [menu.id, menu]));
+
+        // OPTIMIZATION: Check if all requested menu items were found BEFORE the loop
+        for (const requestedMenuId of inputMenuIds) {
+          if (!menuMap.has(requestedMenuId)) {
+            // This will abort the transaction
+            throw new Error(
+              `Menu item with id ${requestedMenuId} not found. Cannot determine price.`
+            );
+          }
+        }
 
         // 2. Delete items that are not in the current input
         await tx.item.deleteMany({
@@ -183,18 +202,10 @@ export default defineEventHandler(async (event) => {
 
         // 3. Upsert items from the input
         for (const itemFromRequest of inputMenuItems) {
-          // Fetch the authoritative price from the Menu table
-          const menu = await tx.menu.findUnique({
-            where: { id: itemFromRequest.id }, // itemFromRequest.id is menuId
-          });
-
-          if (!menu) {
-            // This will abort the transaction
-            throw new Error(
-              `Menu item with id ${itemFromRequest.id} not found. Cannot determine price.`
-            );
-          }
-          const authoritativePrice = menu.price; // Price from the Menu table
+          // Fetch the authoritative price from the pre-fetched menuMap
+          const menu = menuMap.get(itemFromRequest.id);
+          // The check above ensures 'menu' is not undefined, but a non-null assertion or check can be used for safety
+          const authoritativePrice = menu!.price; // Price from the Menu table
 
           const existingItem = await tx.item.findFirst({
             where: {
@@ -208,7 +219,7 @@ export default defineEventHandler(async (event) => {
               where: { id: existingItem.id },
               data: {
                 qty: itemFromRequest.qty,
-                price: authoritativePrice, // Use authoritative price from Menu
+                price: authoritativePrice,
               },
             });
           } else {
@@ -217,8 +228,8 @@ export default defineEventHandler(async (event) => {
                 idOrder: idOrderFromParam,
                 idMenu: itemFromRequest.id,
                 qty: itemFromRequest.qty,
-                price: authoritativePrice, // Use authoritative price from Menu
-                isDelivered: false, // Default to false, can be updated later
+                price: authoritativePrice,
+                isDelivered: false,
               },
             });
           }
