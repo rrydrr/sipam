@@ -46,22 +46,22 @@
 
 <script setup lang="ts">
 import { ref, onMounted } from "vue";
-import { useRouter } from "#app"; // Nuxt 3 composable for router
+import { useRouter } from "#app";
 
-// This tells Nuxt to not use any layout (or a specific one if you have 'minimal.vue')
-// This is good for a page that should be very focused, like displaying a QR code.
+useHead({
+  title: "Order QR Code",
+});
 definePageMeta({
-  layout: false, // Disables the default layout. Or use 'minimal' if you have such a layout.
+  layout: false,
 });
 
 const qrCodeImageSrc = ref<string | null>(null);
-const orderIdForContext = ref<string | null>(null); // To store orderId from state
+const orderIdForContext = ref<string | null>(null);
 const errorMessage = ref<string | null>(null);
 
 const router = useRouter();
 
 onMounted(() => {
-  // This code runs only on the client-side where window.history is available.
   const navigationState = window.history.state;
 
   if (navigationState && navigationState.qrCodeData) {
@@ -80,18 +80,13 @@ onMounted(() => {
 });
 
 const goBack = () => {
-  router.go(-1); // Navigates to the previous page in the browser history
+  router.go(-1);
 };
 </script>
 
 <style scoped>
-/* Ensure QR codes are rendered sharply */
 img {
-  image-rendering: -webkit-optimize-contrast; /* For Chrome, Safari, Edge */
-  image-rendering: crisp-edges; /* For Firefox */
-  /* For a pixelated effect if QR codes are small and need to be scaled up sharply:
-  image-rendering: pixelated;
-  */
+  image-rendering: -webkit-optimize-contrast;
+  image-rendering: crisp-edges;
 }
-/* Tailwind CSS classes are used for the rest of the styling. */
 </style>

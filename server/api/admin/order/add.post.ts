@@ -129,7 +129,7 @@ export default defineEventHandler(async (event: H3Event) => {
 
           const originalData = `${expectedIssuer}/order/${
             (await order).id
-          }/?token=${token}`;
+          }?token=${token}`;
           // 2. Generate the QR code as a Buffer (bytes)
           let qrCodeBuffer: Buffer;
           try {
@@ -154,7 +154,7 @@ export default defineEventHandler(async (event: H3Event) => {
               qrCode: qrCodeBuffer,
             },
           });
-          console.log("Token:", token);
+          console.log("Latest order created:", originalData);
           setResponseStatus(event, 200);
           return {
             success: true,

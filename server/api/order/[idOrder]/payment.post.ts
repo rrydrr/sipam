@@ -9,17 +9,27 @@ const jwtPayloadSchema = z.object({
   iat: z.number(),
 });
 
-function invalidTokenResponse(event: any) {
+function invalidTokenResponse(event: any, message?: string) {
   setResponseStatus(event, 401);
   return {
     success: false,
-    message: "Invalid or expired token.",
+    message: message || "Invalid or expired token.",
   };
 }
 
 export default defineEventHandler(async (event) => {
   try {
-    const idOrder = getRouterParam(event, "idOrder");
+    const idOrderFromParam = getRouterParam(event, "idOrder");
+
+    if (!idOrderFromParam) {
+      setResponseStatus(event, 400);
+      return {
+        success: false,
+        message: "Order ID is missing from URL parameters.",
+      };
+    }
+
+    // --- Authorization and Token Validation ---
     const headers = getRequestHeaders(event);
     const authorization = headers.authorization;
 
@@ -32,16 +42,15 @@ export default defineEventHandler(async (event) => {
     }
 
     const token = authorization.substring(7);
-
     const jwtSecret = process.env.JWT_SECRET;
     const expectedIssuer = process.env.BASE_URL || "http://localhost:3000";
 
     if (!jwtSecret) {
-      console.error("JWT_SECRET is not defined in environment variables.");
+      console.error("JWT_SECRET is not defined.");
       setResponseStatus(event, 500);
       return {
         success: false,
-        message: "Internal server error.",
+        message: "Internal server error: JWT secret not configured.",
       };
     }
 
@@ -49,12 +58,14 @@ export default defineEventHandler(async (event) => {
     try {
       const verified = jwt.verify(token, jwtSecret, {
         issuer: expectedIssuer,
-      }) as object;
-
+      }) as object; // Cast to object before parsing with Zod
       decodedPayload = jwtPayloadSchema.parse(verified);
     } catch (verifyError) {
+      console.error("Token verification failed:", verifyError);
       if (
         verifyError instanceof jwt.JsonWebTokenError ||
+        verifyError instanceof jwt.TokenExpiredError ||
+        verifyError instanceof jwt.NotBeforeError ||
         verifyError instanceof z.ZodError
       ) {
         return invalidTokenResponse(event);
@@ -62,8 +73,12 @@ export default defineEventHandler(async (event) => {
       throw verifyError;
     }
 
+    if (decodedPayload.idOrder !== idOrderFromParam) {
+      return invalidTokenResponse(event, "Token is not valid for this order.");
+    }
+
     const order = await prisma.order.findUnique({
-      where: { id: idOrder },
+      where: { id: idOrderFromParam },
     });
 
     if (!order || order.id !== decodedPayload.idOrder) {
@@ -79,14 +94,14 @@ export default defineEventHandler(async (event) => {
     // }
 
     const orderComplete = await prisma.order.update({
-      where: { id: idOrder },
+      where: { id: idOrderFromParam },
       data: { isPaid: true },
     });
 
     setResponseStatus(event, 200);
     return {
       success: true,
-      message: "Order completed successfully.",
+      message: "Order paid successfully.",
       data: {
         item: {
           id: orderComplete.id,

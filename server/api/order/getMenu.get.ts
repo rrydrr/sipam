@@ -1,24 +1,16 @@
-import { H3Event, getRequestHeaders, setResponseStatus } from "h3";
 import jwt from "jsonwebtoken";
 import { z } from "zod";
+import { id } from "zod/v4/locales";
 import prisma from "~/lib/prisma";
-import QRCodeGenerator from "qrcode"; // Library to generate QR codes
 
 const jwtPayloadSchema = z.object({
-  idUser: z.number(),
-  username: z.string(),
+  idOrder: z.string(),
   iss: z.string().optional(),
   exp: z.number(),
   iat: z.number(),
 });
 
-const bodySchema = z
-  .object({
-    idMeja: z.number(),
-  })
-  .strict();
-
-function invalidTokenResponse(event: H3Event) {
+function invalidTokenResponse(event: any) {
   setResponseStatus(event, 401);
   return {
     success: false,
@@ -31,15 +23,7 @@ function parseImage(image: Buffer | Uint8Array) {
   return `data:image/webp;base64,${buffer.toString("base64")}`;
 }
 
-function internalServerErrorResponse(event: H3Event) {
-  setResponseStatus(event, 500);
-  return {
-    success: false,
-    message: "Internal server error.",
-  };
-}
-
-export default defineEventHandler(async (event: H3Event) => {
+export default defineEventHandler(async (event) => {
   try {
     const headers = getRequestHeaders(event);
     const authorization = headers.authorization;
@@ -83,39 +67,51 @@ export default defineEventHandler(async (event: H3Event) => {
       throw verifyError;
     }
 
-    const user = await prisma.user.findUnique({
-      where: { username: decodedPayload.username, id: decodedPayload.idUser },
+    const order = await prisma.order.findUnique({
+      where: { id: decodedPayload.idOrder },
     });
 
-    if (!user) {
+    if (!order || order.id !== decodedPayload.idOrder) {
       return invalidTokenResponse(event);
     }
 
-    // const parsedBody = bodySchema.parse(await readBody(event));
-
     const menu = await prisma.menu.findMany({});
 
-    return {
-      success: true,
-      message: "Menu retrieved successfully.",
-      data: menu.map((item) => ({
+    const menuGroupedByCategory = menu.reduce((acc, item) => {
+      const kategori = item.kategori || "Lainnya";
+      if (!acc[kategori]) {
+        acc[kategori] = [];
+      }
+      acc[kategori].push({
         id: item.id,
         name: item.name,
-        price: item.price,
         description: item.description,
-        image: item.image != null ? parseImage(item.image as Buffer) : null,
-      })),
+        image: item.image ? parseImage(item.image) : null,
+        // image: "data:image/webp;base64,xxxx",
+        price: item.price,
+        isActive: item.isActive,
+      });
+      return acc;
+    }, {} as Record<string, any>);
+
+    setResponseStatus(event, 200);
+    return {
+      success: true,
+      message: "Get menu successfully.",
+      data: {
+        menu: menuGroupedByCategory,
+      },
     };
   } catch (error) {
     if (error instanceof z.ZodError) {
       setResponseStatus(event, 400);
       return {
         success: false,
-        message: "Invalid request body.",
+        message: "Invalid request body or JWT token.",
         errors: error.errors,
       };
     }
-    console.error("Admin dashboard API error:", error);
+    console.error("Customer get menu API error:", error);
     setResponseStatus(event, 500);
     return {
       success: false,

@@ -79,7 +79,7 @@
                       {{ order.isPaid ? "Paid" : "Unpaid" }}
                     </span>
                     <p
-                      class="mt-2 text-sm font-semibold text-gray-500 uppercase tracking-wider mt-1 mb-1"
+                      class="mt-2 text-sm font-semibold text-gray-500 uppercase tracking-wider mb-1"
                     >
                       Total:
                       <span class="text-gray-700 font-bold"
@@ -150,13 +150,20 @@
 
                 <button
                   @click="handleOrderStatusToggle(order)"
-                  :disabled="order.isComplete"
+                  :disabled="order.isComplete || !order.isPaid"
                   :class="[
-                    'mt-5 w-full text-sm font-semibold py-2 px-3 rounded-lg shadow-sm hover:shadow-md focus:outline-none focus:ring-2 focus:ring-opacity-75 transition-all duration-150 ease-in-out',
-                    order.isComplete
+                    'mt-5 w-full text-sm font-semibold py-2 px-3 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-opacity-75 transition-all duration-150 ease-in-out',
+                    order.isComplete || !order.isPaid
                       ? 'bg-gray-300 text-gray-600 cursor-not-allowed'
-                      : 'bg-indigo-500 hover:bg-indigo-600 text-white focus:ring-indigo-500',
+                      : 'bg-indigo-500 hover:bg-indigo-600 text-white focus:ring-indigo-500 hover:shadow-md',
                   ]"
+                  :title="
+                    order.isComplete
+                      ? 'Order is already completed.'
+                      : !order.isPaid
+                      ? 'Order must be paid before it can be completed.'
+                      : 'Complete this order'
+                  "
                 >
                   {{
                     order.isComplete ? "Order Completed" : "Complete This Order"
@@ -258,6 +265,10 @@
 import { ref, computed, onMounted, onUnmounted, watchEffect } from "vue";
 import { useCookie, useAsyncData, useRouter } from "#app";
 
+useHead({
+  title: "Admin Dashboard",
+});
+
 definePageMeta({
   layout: "admin",
 });
@@ -331,6 +342,23 @@ interface Order {
   isComplete: boolean;
   isPaid: boolean;
   items: OrderItem[];
+}
+
+interface CompleteItemResponse {
+  success: boolean;
+  message: string;
+  data?: {
+    item: {
+      id: string;
+      isDelivered: boolean; // Maps to our local isComplete
+    };
+  };
+}
+
+interface CompleteOrderResponse {
+  success: boolean;
+  message: string;
+  // No 'data' field was specified in the expected success response
 }
 
 const meja = ref<string>("");
@@ -422,7 +450,7 @@ watchEffect(() => {
 onMounted(() => {
   pollingIntervalId = setInterval(() => {
     refreshDashboardData();
-  }, 600000);
+  }, 30000); // Poll every 30 seconds
 });
 
 onUnmounted(() => {
@@ -448,25 +476,199 @@ const formatDate = (dateString: string | undefined) => {
   }
 };
 
-const handleItemStatusToggle = (order: Order, item: OrderItem) => {
-  if (!item.isComplete) {
-    const targetOrder = allOrders.value.find((o) => o.id === order.id);
-    if (targetOrder) {
-      const targetItem = targetOrder.items.find((i) => i.id === item.id);
-      if (targetItem) {
-        targetItem.isComplete = true;
+// const handleItemStatusToggle = (order: Order, item: OrderItem) => {
+//   if (!item.isComplete) {
+//     const targetOrder = allOrders.value.find((o) => o.id === order.id);
+//     if (targetOrder) {
+//       const targetItem = targetOrder.items.find((i) => i.id === item.id);
+//       if (targetItem) {
+//         targetItem.isComplete = true;
+//       }
+//     }
+//   }
+// };
+const handleItemStatusToggle = async (order: Order, item: OrderItem) => {
+  if (item.isComplete) {
+    // Optionally inform the user or simply do nothing if already complete
+    // console.log("Item is already complete.");
+    return;
+  }
+
+  // Optional: Add an item-specific loading state if you want to disable the button
+  // or show a spinner during the API call. For this, you would need to add
+  // an `isLoading` property to your `OrderItem` interface and manage it.
+  // For example: item.isLoading = true;
+
+  const token = authToken.value;
+  if (!token) {
+    alert("Authentication error: You might need to log in again.");
+    // if (item.isLoading) item.isLoading = false;
+    return;
+  }
+
+  try {
+    const response = await $fetch<CompleteItemResponse>(
+      "/api/admin/order/completeItem",
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: {
+          idItem: item.id,
+        },
       }
+    );
+
+    if (response.success && response.data?.item) {
+      const targetOrder = allOrders.value.find((o) => o.id === order.id);
+      if (targetOrder) {
+        const targetItem = targetOrder.items.find((i) => i.id === item.id);
+        if (targetItem) {
+          targetItem.isComplete = response.data.item.isDelivered;
+          // Optionally, show a success message, e.g., using a toast notification
+          // alert(response.message);
+          console.log(
+            "Item status updated successfully via API:",
+            response.message
+          );
+
+          // Check if all items in this order are now complete
+          const allItemsComplete = targetOrder.items.every((i) => i.isComplete);
+          if (allItemsComplete && !targetOrder.isComplete) {
+            // If you have a separate API to mark the order as complete, call it here
+            // or prompt the user to mark the order as complete.
+            // For now, let's assume the "Complete This Order" button is still the way
+            // to mark the entire order as complete explicitly by the user.
+            console.log(
+              `All items for order ${targetOrder.id} are complete. User can now mark order as complete.`
+            );
+          }
+        }
+      }
+    } else {
+      // API returned success: false or data was missing
+      alert(
+        `Failed to update item: ${
+          response.message || "Unknown error from server."
+        }`
+      );
+      console.error(
+        "API Error - Failed to update item status:",
+        response.message,
+        response
+      );
     }
+  } catch (err: any) {
+    const errorMessage =
+      err.data?.message ||
+      err.message ||
+      "An unexpected network error occurred.";
+    alert(`Error updating item status: ${errorMessage}`);
+    console.error("Fetch/Network Error - Failed to update item status:", err);
+    // You could also set fetchError.value = errorMessage; to display it in the main error area.
+  } finally {
+    // if (item.isLoading) item.isLoading = false; // Reset item-specific loading state
   }
 };
 
-const handleOrderStatusToggle = (order: Order) => {
-  if (!order.isComplete) {
-    const targetOrder = allOrders.value.find((o) => o.id === order.id);
-    if (targetOrder) {
-      targetOrder.isComplete = true;
-      targetOrder.items.forEach((item) => (item.isComplete = true));
+// const handleOrderStatusToggle = (order: Order) => {
+//   if (!order.isComplete) {
+//     const targetOrder = allOrders.value.find((o) => o.id === order.id);
+//     if (targetOrder) {
+//       targetOrder.isComplete = true;
+//       targetOrder.items.forEach((item) => (item.isComplete = true));
+//     }
+//   }
+// };
+
+const handleOrderStatusToggle = async (order: Order) => {
+  // Double-check conditions, though the button's :disabled state should mostly handle this.
+  if (order.isComplete) {
+    // This case should ideally not be reachable if the button is correctly disabled.
+    alert("This order is already marked as complete.");
+    return;
+  }
+  if (!order.isPaid) {
+    // This case should also ideally not be reachable.
+    alert("Order must be paid before it can be completed.");
+    return;
+  }
+
+  // Optional: Implement a loading state for the specific order or button if desired
+  // For example, you could add an `isCompleting` property to the Order interface:
+  // order.isCompleting = true;
+
+  const token = authToken.value;
+  if (!token) {
+    alert(
+      "Authentication error: Unable to process request. Please log in again."
+    );
+    // if (order.isCompleting) order.isCompleting = false;
+    return;
+  }
+
+  try {
+    const response = await $fetch<CompleteOrderResponse>(
+      "/api/admin/order/completeOrder",
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: {
+          idOrder: order.id, // Send the order ID in the request body
+        },
+      }
+    );
+
+    if (response.success) {
+      // alert(response.message); // Optionally show success message to the user
+
+      // For immediate UI feedback, update the local state.
+      // The refreshDashboardData call will later fetch the authoritative state.
+      const targetOrderInAllOrders = allOrders.value.find(
+        (o) => o.id === order.id
+      );
+      if (targetOrderInAllOrders) {
+        targetOrderInAllOrders.isComplete = true;
+        // As the backend auto-completes items, reflect this on the frontend too.
+        targetOrderInAllOrders.items.forEach((item) => {
+          item.isComplete = true;
+        });
+      }
+
+      console.log("Order completed successfully via API:", response.message);
+
+      // Refresh the dashboard data to get the latest state from the server.
+      // This will typically remove the order from the 'incompleteOrders' list.
+      await refreshDashboardData();
+    } else {
+      // API returned success: false
+      alert(
+        `Failed to complete order: ${
+          response.message || "An unknown server error occurred."
+        }`
+      );
+      console.error(
+        "API Error - Failed to complete order:",
+        response.message,
+        response
+      );
     }
+  } catch (err: any) {
+    const errorMessage =
+      err.data?.message ||
+      err.message ||
+      "An unexpected network error occurred while completing the order.";
+    alert(`Error: ${errorMessage}`);
+    console.error("Fetch/Network Error - Failed to complete order:", err);
+    // You might want to set a general fetchError here if it's a persistent issue.
+    // fetchError.value = errorMessage;
+  } finally {
+    // if (order.isCompleting) order.isCompleting = false; // Reset loading state
   }
 };
 
@@ -572,11 +774,10 @@ const generateOrder = async () => {
     );
 
     const requestBody = {
-      idMeja: parsedIdMeja, // Use the parsed numeric value
+      idMeja: parsedIdMeja,
     };
 
     const response = await $fetch<any>("/api/admin/order/add", {
-      // Using <any> as in your prior example
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -591,9 +792,8 @@ const generateOrder = async () => {
       const orderId = response.data.order.id;
 
       router.push({
-        path: "/admin/qrcode", // Path to your new QR code page file
+        path: "/admin/qrcode",
         state: {
-          // Pass data using history state (client-side only)
           qrCodeData: qrCodeBase64,
           orderId: orderId,
         },
@@ -654,7 +854,6 @@ const generateOrder = async () => {
 }
 
 @media (min-width: 640px) {
-  /* sm breakpoint */
   .shadow-lg
     > div:has(
       h1.text-xl.sm\\:text-2xl.font-semibold.text-gray-800.mb-4:contains(

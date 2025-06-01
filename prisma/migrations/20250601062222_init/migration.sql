@@ -29,6 +29,7 @@ CREATE TABLE "Menu" (
     "id" SERIAL NOT NULL,
     "name" VARCHAR(255) NOT NULL,
     "description" TEXT NOT NULL,
+    "kategori" VARCHAR(100) NOT NULL,
     "image" BYTEA,
     "price" INTEGER NOT NULL,
     "isActive" BOOLEAN NOT NULL,
@@ -82,6 +83,9 @@ CREATE TABLE "Item" (
 
 -- CreateIndex
 CREATE UNIQUE INDEX "User_username_key" ON "User"("username");
+
+-- CreateIndex
+CREATE INDEX "Menu_kategori_idx" ON "Menu"("kategori");
 
 -- AddForeignKey
 ALTER TABLE "User" ADD CONSTRAINT "User_idCabang_fkey" FOREIGN KEY ("idCabang") REFERENCES "Cabang"("id") ON DELETE SET NULL ON UPDATE CASCADE;

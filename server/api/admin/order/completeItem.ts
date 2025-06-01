@@ -11,6 +11,12 @@ const jwtPayloadSchema = z.object({
   iat: z.number(),
 });
 
+const itemIdSchema = z
+  .object({
+    idItem: z.string(),
+  })
+  .strict();
+
 function invalidTokenResponse(event: H3Event) {
   setResponseStatus(event, 401);
   return {
@@ -71,17 +77,57 @@ export default defineEventHandler(async (event: H3Event) => {
       return invalidTokenResponse(event);
     }
 
-    const menu = await prisma.menu.findMany({});
+    let decodedItemId: z.infer<typeof itemIdSchema>;
+    try {
+      const body = await readBody(event);
+      decodedItemId = itemIdSchema.parse(body);
+    } catch (parseError) {
+      console.error("Item ID parsing error:", parseError);
+      setResponseStatus(event, 400);
+      return {
+        success: false,
+        message: "Invalid item ID format.",
+      };
+    }
+
+    const item = await prisma.item.findUnique({
+      where: { id: decodedItemId.idItem },
+    });
+
+    if (!item) {
+      setResponseStatus(event, 404);
+      return {
+        success: false,
+        message: "Item not found.",
+      };
+    }
+
+    if (item.isDelivered) {
+      setResponseStatus(event, 400);
+      return {
+        success: false,
+        message: "Item is already completed.",
+      };
+    }
+
+    const updatedItem = await prisma.item.update({
+      where: { id: decodedItemId.idItem },
+      data: { isDelivered: true },
+    });
 
     setResponseStatus(event, 200);
     return {
       success: true,
+      message: "Item completed successfully.",
       data: {
-        menu: menu,
+        item: {
+          id: updatedItem.id,
+          isDelivered: updatedItem.isDelivered,
+        },
       },
     };
   } catch (error) {
-    console.error("Admin dashboard API error:", error);
+    console.error("Admin complete item API error:", error);
     setResponseStatus(event, 500);
     return {
       success: false,

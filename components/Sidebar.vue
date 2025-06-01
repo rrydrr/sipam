@@ -137,15 +137,7 @@ const handleLogout = async () => {
       // For example: alert(`Logout failed: ${error.value.data?.message || 'Server error'}`);
     } else {
       console.log("Logout successful:", data.value);
-      emit("loggedOut"); // Notify parent component about successful logout
-
-      // Optional: Redirect the user after logout
-      // For Nuxt 3, use navigateTo():
-      // await navigateTo('/login');
-      // Or, for a full page reload to clear all state:
-      // window.location.href = '/login';
-
-      // Close sidebar on mobile if it's open
+      await navigateTo("/admin/login");
       if (
         props.isOpen &&
         typeof window !== "undefined" &&

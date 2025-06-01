@@ -25,6 +25,7 @@ const menuFormDataSchema = z.object({
       message: "Price must be a positive number",
     }),
   description: z.string().optional(),
+  kategori: z.string(),
 });
 
 // Helper function to send a 401 Unauthorized response
@@ -116,6 +117,7 @@ export default defineEventHandler(async (event: H3Event) => {
       name: menuData.name,
       price: menuData.price,
       description: menuData.description,
+      kategori: menuData.kategori,
     });
 
     if (!parsedMenuData.success) {
@@ -155,6 +157,7 @@ export default defineEventHandler(async (event: H3Event) => {
           description: description || "",
           image: imageFile.data, // Store the image Buffer directly
           isActive: true, // Default to active
+          kategori: parsedMenuData.data.kategori, // Store the category
         },
       });
 
@@ -167,6 +170,7 @@ export default defineEventHandler(async (event: H3Event) => {
           name: newMenu.name,
           price: newMenu.price,
           description: newMenu.description,
+          kategori: newMenu.kategori,
         },
       };
     } catch (dbError) {
