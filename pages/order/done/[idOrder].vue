@@ -303,6 +303,23 @@ interface ApiResponse {
   order: OrderDetails;
 }
 
+interface PaymentApiResponse {
+  success: boolean;
+  message: string;
+  data?: {
+    // The data field itself is optional based on typical API designs
+    item: {
+      id: string;
+      idMeja?: number; // Marking as optional if not strictly needed by frontend logic post-payment
+      idUser?: number; // Marking as optional
+      idCabang?: number; // Marking as optional
+      total: number;
+      isPaid: boolean;
+      isDone: boolean;
+    };
+  };
+}
+
 const route = useRoute();
 const idOrder = computed(() => route.params.idOrder as string | undefined);
 const customerToken = useCookie<string | undefined>("customerToken");
@@ -401,7 +418,16 @@ const formatCurrency = (value: number) => {
 };
 
 const handlePayNow = async () => {
-  if (!orderData.value || orderData.value.isPaid) return;
+  if (!orderData.value || orderData.value.isPaid) {
+    return;
+  }
+
+  // Ensure idOrder (which is orderData.value.id here) is available
+  if (!orderData.value.id) {
+    paymentError.value = "Order ID is missing. Cannot proceed with payment.";
+    console.error("Order ID missing from orderData for payment.");
+    return;
+  }
 
   if (!customerToken.value) {
     paymentError.value =
@@ -413,34 +439,62 @@ const handlePayNow = async () => {
   paymentError.value = null;
 
   try {
-    // --- SIMULATE PAYMENT API CALL ---
-    // Replace with your actual payment API call using $fetch
-    // Example:
-    // await $fetch('/api/process-payment', {
-    //   method: 'POST',
-    //   headers: { 'Authorization': `Bearer ${customerToken.value}` },
-    //   body: { orderId: orderData.value.id, amount: orderData.value.total }
-    // });
-    await new Promise((resolve) => setTimeout(resolve, 2000)); // Simulate network delay
-    console.log(`Simulated payment for order ID: ${orderData.value.id}`);
-    // --- END SIMULATION ---
+    // Construct the payment API endpoint using the order's ID
+    const paymentApiEndpoint = `/api/order/${orderData.value.id}/payment`;
 
-    // After successful payment, refresh order details to get the latest status
-    await refreshOrderDetails();
-    // Check `fetchError` or `pageError` after refresh if the refresh itself failed.
-    if (fetchError.value) {
-      paymentError.value = `Payment successful, but failed to update order status: ${fetchError.value.message}`;
-    } else if (pageError.value) {
-      paymentError.value = `Payment successful, but failed to update order status: ${pageError.value}`;
+    // Perform the API call
+    const response = await $fetch<PaymentApiResponse>(paymentApiEndpoint, {
+      method: "POST", // Or 'PUT', depending on your API's convention for such actions
+      headers: {
+        Authorization: `Bearer ${customerToken.value}`,
+        "Content-Type": "application/json", // Good practice, even with no body
+      },
+      // No request body as specified
+    });
+
+    if (response.success) {
+      // Payment was successful according to the API
+      // Refresh order details to get the latest status (e.g., isPaid will be true)
+      await refreshOrderDetails();
+
+      // After refresh, check if the refresh itself had issues
+      if (fetchError.value) {
+        paymentError.value = `Payment recorded, but failed to update order display: ${fetchError.value.message}. Please refresh.`;
+        console.warn(
+          "Payment successful, but order refresh failed:",
+          fetchError.value
+        );
+      } else if (pageError.value) {
+        paymentError.value = `Payment recorded, but failed to update order display: ${pageError.value}. Please refresh.`;
+        console.warn(
+          "Payment successful, but order refresh led to pageError:",
+          pageError.value
+        );
+      } else {
+        // Successfully paid and order details refreshed.
+        // The UI will update reactively due to changes in orderData.
+        console.log(
+          response.message || "Payment processed and order details updated."
+        );
+        // You could set a temporary success message here if desired,
+        // but the UI should update based on orderData.isPaid
+      }
     } else {
-      // Optionally show a success message for payment itself if not relying on status change
+      // API indicated payment was not successful (e.g., business logic failure)
+      paymentError.value =
+        response.message || "Payment was not successful. Please try again.";
     }
   } catch (e: any) {
+    // Error occurred during the $fetch call (e.g., network error, non-2xx response)
     console.error("Payment processing error:", e);
     if (e.data && e.data.message) {
+      // Nuxt $fetch error structure
       paymentError.value = `Payment Error: ${e.data.message}`;
+    } else if (e.message) {
+      paymentError.value = `Payment Error: ${e.message}`;
     } else {
-      paymentError.value = "Payment failed. Please try again.";
+      paymentError.value =
+        "Payment failed due to an unexpected error. Please try again.";
     }
   } finally {
     processingPayment.value = false;
