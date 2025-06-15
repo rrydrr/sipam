@@ -369,6 +369,7 @@ const allOrders = ref<Order[]>([]);
 const isLoading = ref(true);
 const fetchError = ref<string | null>(null);
 let pollingIntervalId: ReturnType<typeof setInterval> | undefined = undefined;
+const { csrf } = useCsrf();
 
 const authToken = useCookie<string | undefined>("authToken");
 const router = useRouter();
@@ -394,6 +395,7 @@ const {
         {
           headers: {
             Authorization: `Bearer ${token}`,
+            "X-CSRF-TOKEN": csrf,
           },
         }
       );
@@ -514,6 +516,7 @@ const handleItemStatusToggle = async (order: Order, item: OrderItem) => {
         headers: {
           "Content-Type": "application/json",
           Authorization: `Bearer ${token}`,
+          "X-CSRF-TOKEN": csrf,
         },
         body: {
           idItem: item.id,
@@ -617,6 +620,7 @@ const handleOrderStatusToggle = async (order: Order) => {
         headers: {
           "Content-Type": "application/json",
           Authorization: `Bearer ${token}`,
+          "X-CSRF-TOKEN": csrf,
         },
         body: {
           idOrder: order.id, // Send the order ID in the request body
@@ -696,6 +700,7 @@ const toggleShopStatus = async () => {
             method: "POST",
             headers: {
               Authorization: `Bearer ${token}`,
+              "X-CSRF-TOKEN": csrf,
             },
           });
 
@@ -782,6 +787,7 @@ const generateOrder = async () => {
       headers: {
         "Content-Type": "application/json",
         Authorization: `Bearer ${authToken.value}`,
+        "X-CSRF-TOKEN": csrf,
       },
       body: requestBody,
     });

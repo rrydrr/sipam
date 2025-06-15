@@ -64,5 +64,8 @@ const closeSidebar = () => {
   isSidebarOpen.value = false;
 };
 
-const sidebarItems = ref([{ text: "Dashboard", to: "/admin/dashboard" }]);
+const sidebarItems = ref([
+  { text: "Dashboard", to: "/admin/dashboard" },
+  { text: "Menu", to: "/admin/menu" },
+]);
 </script>
