@@ -56,7 +56,7 @@ export default defineNuxtConfig({
     //   interval: 300000, // 5 minutes
     // },
     csrf: {
-      enabled: false,
+      enabled: true,
       cookie: {
         httpOnly: true,
         secure: process.env.NODE_ENV === "production",

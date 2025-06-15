@@ -2,12 +2,7 @@ import { H3Event, deleteCookie } from "h3";
 
 export default defineEventHandler(async (event) => {
   try {
-    deleteCookie(event, "authToken", {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
-      sameSite: "strict",
-      path: "/",
-    });
+    deleteCookie(event, "authToken", { path: "/admin/" });
 
     setResponseStatus(event, 200);
     return {
