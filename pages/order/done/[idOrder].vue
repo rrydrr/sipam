@@ -330,6 +330,7 @@ const paymentError = ref<string | null>(null);
 
 const POLLING_INTERVAL_MS = 30000; // 30 seconds
 let pollingInterval: NodeJS.Timeout | null = null;
+const { csrf } = useCsrf();
 
 // useAsyncData for fetching order details
 const {
@@ -362,6 +363,7 @@ const {
           headers: {
             Authorization: `Bearer ${customerToken.value}`,
             "Content-Type": "application/json",
+            "X-CSRF-Token": csrf,
           },
           // $fetch automatically throws an error for non-2xx responses
           // You can add a timeout here if needed: timeout: 5000
@@ -448,6 +450,7 @@ const handlePayNow = async () => {
       headers: {
         Authorization: `Bearer ${customerToken.value}`,
         "Content-Type": "application/json", // Good practice, even with no body
+        "X-CSRF-Token": csrf,
       },
       // No request body as specified
     });

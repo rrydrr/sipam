@@ -16,14 +16,12 @@
             stroke="currentColor"
             stroke-width="4"
           ></circle>
-
           <path
             class="opacity-75"
             fill="currentColor"
             d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
           ></path>
         </svg>
-
         <p class="mt-2 text-gray-600">Loading Menu...</p>
       </div>
 
@@ -32,7 +30,6 @@
         class="text-center py-10 bg-red-50 text-red-700 p-4 rounded-md shadow"
       >
         <p class="font-semibold">Error loading menu:</p>
-
         <p>{{ menuError }}</p>
       </div>
 
@@ -58,7 +55,6 @@
           >
             {{ categoryName }}
           </h3>
-
           <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             <div
               v-for="item in items.filter((i) => i.isActive)"
@@ -70,28 +66,23 @@
                 :alt="item.name"
                 class="w-full h-48 object-cover"
               />
-
               <div class="p-4 sm:p-5 flex flex-col flex-grow">
                 <h4 class="text-xl font-semibold text-gray-800 mb-2">
                   {{ item.name }}
                 </h4>
-
                 <p
                   v-if="item.description"
                   class="text-sm text-gray-600 mb-3 flex-grow min-h-[3em]"
                 >
                   {{ item.description }}
                 </p>
-
                 <p class="text-lg font-bold text-blue-500 mb-4">
                   IDR {{ item.price.toLocaleString() }}
                 </p>
-
                 <div class="mt-auto flex items-center">
                   <label :for="'qty-' + item.id" class="sr-only"
                     >Quantity for {{ item.name }}</label
                   >
-
                   <button
                     @click="decrementQuantity(item.id)"
                     class="px-3 py-2 border border-gray-300 rounded-l-md text-gray-700 bg-gray-100 hover:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
@@ -111,7 +102,6 @@
                       />
                     </svg>
                   </button>
-
                   <input
                     type="number"
                     :id="'qty-' + item.id"
@@ -121,7 +111,6 @@
                     class="w-16 p-2 border-t border-b border-gray-300 text-center focus:ring-1 focus:ring-blue-500 focus:border-blue-500 transition-colors appearance-none"
                     aria-label="Item quantity"
                   />
-
                   <button
                     @click="incrementQuantity(item.id)"
                     class="px-3 py-2 border border-gray-300 rounded-r-md text-gray-700 bg-gray-100 hover:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
@@ -159,7 +148,6 @@
           <h3 class="text-2xl font-semibold mb-6 text-center text-indigo-700">
             Order Summary
           </h3>
-
           <ul class="space-y-3 mb-6">
             <li
               v-for="summaryItem in orderSummaryItems"
@@ -170,35 +158,29 @@
                 <span class="font-medium text-gray-800">{{
                   summaryItem.name
                 }}</span>
-
                 <span class="text-sm text-gray-600">
                   (Qty: {{ summaryItem.qty }})</span
                 >
               </div>
-
               <span class="font-semibold text-indigo-600"
                 >IDR {{ summaryItem.lineTotal.toLocaleString() }}</span
               >
             </li>
           </ul>
-
           <div class="border-t-2 border-indigo-200 pt-4">
             <h4
               class="flex justify-between items-center text-xl font-bold text-indigo-800"
             >
               <span>Total:</span>
-
               <span>IDR {{ orderTotal.toLocaleString() }}</span>
             </h4>
           </div>
-
           <div class="mt-6 mb-4">
             <label
               for="sellerNote"
               class="block text-sm font-medium text-gray-700 mb-1"
               >Nota untuk Penjual (Opsional):</label
             >
-
             <textarea
               id="sellerNote"
               v-model="sellerNote"
@@ -207,7 +189,6 @@
               placeholder="Contoh: Tolong jangan pakai bawang, atau sambal dipisah."
             ></textarea>
           </div>
-
           <button
             @click="submitOrder"
             :disabled="orderItemsForPayload.length === 0 || isSubmittingOrder"
@@ -249,14 +230,14 @@ import { ref, computed, onMounted, nextTick } from "vue";
 import { useRoute, navigateTo, useCookie } from "#app";
 import { $fetch } from "ofetch";
 
-// --- Authentication and Route Logic ---
 const route = useRoute();
 const idOrder = route.params.idOrder as string;
 const initialCheckDone = ref(false);
+const { csrf } = useCsrf();
 
-const cookieName = "customerToken"; // This is your customerToken
+const cookieName = "customerToken";
 const cookieOptions = {
-  maxAge: 60 * 60 * 6, // 6 hours
+  maxAge: 60 * 60 * 6,
   path: "/order/",
   secure: process.env.NODE_ENV === "production",
   sameSite: "strict" as const,
@@ -277,34 +258,29 @@ let activeTokenDetermined: string | null = null;
 
 if (tokenInQuery) {
   activeTokenDetermined = tokenInQuery;
-  // Always replace the cookie with the new token from query
   authTokenCookie.value = activeTokenDetermined;
 } else if (authTokenCookie.value) {
   activeTokenDetermined = authTokenCookie.value;
 }
 
-const tokenForDisplay = ref<string | null>(activeTokenDetermined); // This will be used as Bearer token
+const tokenForDisplay = ref<string | null>(activeTokenDetermined);
 
 if (process.client) {
   if (!tokenForDisplay.value && route.path !== "/") {
-    // Assuming your login/auth page is at the root or a specific auth page
-    // navigateTo('/'); // Or navigateTo('/auth-required-page');
   }
   initialCheckDone.value = true;
 } else {
-  // SSR context
   if (!tokenForDisplay.value) {
     initialCheckDone.value = true;
   }
 }
 
-// --- Menu Item Interface ---
 interface MenuItem {
-  id: number; // This is the menu item ID, corresponds to "id" in order.item array (request) and "idMenu" in order.items array (response)
+  id: number;
   name: string;
   description: string;
   image: string;
-  price: number; // Unit price
+  price: number;
   isActive: boolean;
 }
 
@@ -316,43 +292,39 @@ interface MenuApiResponse {
   };
 }
 
-// --- Order Status Item Interfaces (NEW) ---
 interface OrderItemStatusDetail {
-  id: string; // Unique ID of the order item line itself
+  id: string;
   idMenu: number;
   idOrder: string;
   qty: number;
-  price: number; // Unit price
+  price: number;
   isDelivered: boolean;
   created_at: string;
   updated_at: string;
 }
 
 interface OrderWithStatus {
-  id: string; // Order ID
+  id: string;
   isDone: boolean;
-  total: number; // Overall total of the saved order
-  Item: OrderItemStatusDetail[]; // Note: "Item" with capital "I" as per response
+  total: number;
+  Item: OrderItemStatusDetail[];
   note: string;
   isPaid: boolean;
 }
 
 interface GetItemStatusApiResponse {
   order: OrderWithStatus;
-  // Assuming the response might also have success/message fields like other APIs
   success?: boolean;
   message?: string;
 }
 
-// --- Menu Data State and Fetching ---
 const menuCategories = ref<Record<string, MenuItem[]>>({});
 const isLoadingMenu = ref(true);
 const menuError = ref<string | null>(null);
 const currentOrderStatus = ref<OrderWithStatus | null>(null);
-const isLoadingOrderStatus = ref(false); // Separate loading state for order status
+const isLoadingOrderStatus = ref(false);
 const orderStatusError = ref<string | null>(null);
 
-// --- Function to fetch Menu Data ---
 async function fetchMenuData() {
   if (!tokenForDisplay.value) {
     menuError.value = "Authentication token not available. Cannot fetch menu.";
@@ -366,12 +338,13 @@ async function fetchMenuData() {
     const response = await $fetch<MenuApiResponse>("/api/order/getMenu", {
       headers: {
         Authorization: `Bearer ${tokenForDisplay.value}`,
+        "X-CSRF-Token": csrf,
       },
     });
 
     if (response.success && response.data && response.data.menu) {
       menuCategories.value = response.data.menu;
-      initializeQuantitiesAfterFetch(); // Initializes quantities, possibly to 0
+      initializeQuantitiesAfterFetch();
     } else {
       throw new Error(
         response.message ||
@@ -390,11 +363,10 @@ async function fetchMenuData() {
   }
 }
 
-// --- Function to fetch Order Item Status (NEW) ---
 async function fetchOrderStatus() {
   if (!tokenForDisplay.value || !idOrder) {
     orderStatusError.value = "Token or Order ID missing for fetching status.";
-    isLoadingOrderStatus.value = false; // Ensure loading state is reset
+    isLoadingOrderStatus.value = false;
     return;
   }
 
@@ -406,18 +378,14 @@ async function fetchOrderStatus() {
       method: "GET",
       headers: {
         Authorization: `Bearer ${tokenForDisplay.value}`,
+        "X-CSRF-Token": csrf,
       },
     });
 
-    // Assuming response structure is directly GetItemStatusApiResponse
-    // or if it has a `data` wrapper, adjust accordingly.
-    // Based on provided example, it's direct: { order: { ... } }
     if (response && response.order) {
       currentOrderStatus.value = response.order;
-      // Now, pre-fill form based on this fetched order
       prefillOrderFormFromStatus();
     } else {
-      // Handle cases like: { success: false, message: "..." } if your API does that
       throw new Error(
         response.message ||
           "Failed to fetch order status or data in unexpected format."
@@ -430,29 +398,24 @@ async function fetchOrderStatus() {
       error.message ||
       "An unexpected error occurred while fetching order status.";
     orderStatusError.value = errorMessage;
-    // Optionally, clear currentOrderStatus if fetch fails significantly
-    // currentOrderStatus.value = null;
   } finally {
     isLoadingOrderStatus.value = false;
   }
 }
 
-// --- Function to pre-fill order form from fetched status (NEW) ---
 function prefillOrderFormFromStatus() {
   if (
     !currentOrderStatus.value ||
     Object.keys(menuCategories.value).length === 0
   ) {
-    // No status data or menu not loaded yet, cannot pre-fill
     return;
   }
 
   const orderData = currentOrderStatus.value;
-  const newQuantities: { [key: number]: number } = { ...itemQuantities.value }; // Start with existing quantities
+  const newQuantities: { [key: number]: number } = { ...itemQuantities.value };
 
   if (orderData.Item && orderData.Item.length > 0) {
     orderData.Item.forEach((itemDetail) => {
-      // Check if this menu item ID exists in our current menu
       let itemExistsInMenu = false;
       for (const categoryName in menuCategories.value) {
         if (
@@ -478,48 +441,34 @@ function prefillOrderFormFromStatus() {
   if (orderData.note) {
     sellerNote.value = orderData.note;
   }
-
-  // Potentially disable ordering if orderData.isDone or orderData.isPaid
-  // For now, this is not implemented but here's where you might add it:
-  // if (orderData.isDone || orderData.isPaid) {
-  //   // Add logic to disable inputs, buttons, etc.
-  //   console.log("Order is already processed (done or paid). Further editing might be restricted.");
-  // }
 }
 
 onMounted(async () => {
   if (process.client) {
     initialCheckDone.value = true;
     if (tokenForDisplay.value && idOrder) {
-      isLoadingMenu.value = true; // Set loading true before async calls
-      isLoadingOrderStatus.value = true; // Set loading true
+      isLoadingMenu.value = true;
+      isLoadingOrderStatus.value = true;
 
-      // Fetch menu and order status, potentially in parallel or sequence
-      // Fetching menu first to initialize menu-dependent structures
-      await fetchMenuData(); // This calls initializeQuantitiesAfterFetch
+      await fetchMenuData();
 
-      // Then fetch the current order status which might update quantities and notes
-      // This needs to run after menu is loaded so prefillOrderFormFromStatus can map idMenu to menu items
       await fetchOrderStatus();
     } else {
       isLoadingMenu.value = false;
-      isLoadingOrderStatus.value = false; // Also ensure this is false
+      isLoadingOrderStatus.value = false;
       const authError = !tokenForDisplay.value
         ? "Authentication required."
         : "";
       const idError = !idOrder ? "Order ID missing." : "";
       const errors = [authError, idError].filter(Boolean).join(" ");
       menuError.value = `${errors} You may be redirected.`;
-      // orderStatusError could also be set here if desired
+
       if (route.path !== "/" && !tokenForDisplay.value) {
-        // Example condition for redirect
-        // navigateTo('/');
       }
     }
   }
 });
 
-// --- Order Management (existing, with initializeQuantitiesAfterFetch modified) ---
 const itemQuantities = ref<{ [key: number]: number }>({});
 const sellerNote = ref("");
 
@@ -529,16 +478,11 @@ const initializeQuantitiesAfterFetch = () => {
     for (const categoryName in menuCategories.value) {
       const categoryItems = menuCategories.value[categoryName];
       for (const menuItem of categoryItems) {
-        // Initialize with 0 if not already set by prefillOrderFormFromStatus or previous interactions
         newQuantities[menuItem.id] = itemQuantities.value[menuItem.id] || 0;
       }
     }
     itemQuantities.value = newQuantities;
   }
-  // If currentOrderStatus is already fetched and has items, it might be better to
-  // let prefillOrderFormFromStatus be the sole source of truth for quantities from backend.
-  // However, initializeQuantitiesAfterFetch ensures all menu items have a quantity entry (even if 0).
-  // The current sequence in onMounted (fetchMenu -> initQuantities -> fetchStatus -> prefill) should work.
 };
 
 onMounted(async () => {
@@ -549,10 +493,8 @@ onMounted(async () => {
     } else {
       isLoadingMenu.value = false;
       if (route.path !== "/") {
-        // Avoid error message on root if it's the auth page
         menuError.value =
           "Authentication required to view the menu. You may be redirected.";
-        // Potentially navigateTo('/auth-page') here if not handled by initial check
       }
     }
   }
@@ -602,9 +544,9 @@ const orderItemsForPayload = computed(() => {
         const qty = itemQuantities.value[menuItem.id] || 0;
         if (qty > 0) {
           items.push({
-            id: menuItem.id, // This is the MenuItem ID
+            id: menuItem.id,
             qty: qty,
-            price: menuItem.price * qty, // This is the line total for this item type
+            price: menuItem.price * qty,
           });
         }
       }
@@ -636,31 +578,29 @@ const orderSummaryItems = computed(() => {
       name: menuItem ? menuItem.name : "Unknown Item",
       qty: payloadItem.qty,
       unitPrice: menuItem ? menuItem.price : 0,
-      lineTotal: payloadItem.price, // This is already the line total
+      lineTotal: payloadItem.price,
     };
   });
 });
 
-// --- Response interface for submit order ---
 interface SubmitOrderResponse {
   success: boolean;
   message: string;
   order?: {
-    // Optional, present on success
     id: string;
     note: string;
     total: number;
     isPaid: boolean;
     items: Array<{
-      id: string; // Unique ID for the order item line
+      id: string;
       idMenu: number;
       qty: number;
-      price: number; // Unit price in response
+      price: number;
     }>;
   };
 }
 
-const isSubmittingOrder = ref(false); // To disable button during submission
+const isSubmittingOrder = ref(false);
 
 const submitOrder = async () => {
   if (!tokenForDisplay.value) {
@@ -680,45 +620,35 @@ const submitOrder = async () => {
 
   const orderData = {
     order: {
-      id: idOrder, // Dynamic Order ID from route params
+      id: idOrder,
       total: orderTotal.value,
       note: sellerNote.value,
-      item: orderItemsForPayload.value, // Array of {id: menuItemId, qty: number, price: lineTotal}
+      item: orderItemsForPayload.value,
     },
   };
 
   console.log("Submitting Order Data:", JSON.stringify(orderData, null, 2));
 
   try {
-    // Construct the dynamic endpoint
     const apiEndpoint = `/api/order/${idOrder}/submit`;
 
     const response = await $fetch<SubmitOrderResponse>(apiEndpoint, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        Authorization: `Bearer ${tokenForDisplay.value}`, // Using customerToken (activeTokenDetermined)
+        Authorization: `Bearer ${tokenForDisplay.value}`,
+        "X-CSRF-Token": csrf,
       },
       body: orderData,
     });
 
-    // console.log("Order submitted successfully:", response);
     if (response.success && response.order) {
-      // alert(
-      //   `Order Placed Successfully!\nMessage: ${response.message}\nOrder ID: ${
-      //     response.order.id
-      //   }\nTotal: IDR ${response.order.total.toLocaleString()}`
-      // );
-      // Reset quantities and note
       Object.keys(itemQuantities.value).forEach(
         (key) => (itemQuantities.value[parseInt(key)] = 0)
       );
       sellerNote.value = "";
-      // Optionally, you could fetch updated order details or navigate
-      // For example, to a success page: navigateTo(`/order/${response.order.id}/success`);
-      navigateTo(`/order/done/${response.order.id}`); // Redirect to the order details page
+      navigateTo(`/order/done/${response.order.id}`);
     } else {
-      // Handle cases where success might be true but order data is missing, or success is false
       throw new Error(
         response.message ||
           "Order submission failed but no error message was provided."
@@ -745,6 +675,6 @@ input[type="number"]::-webkit-outer-spin-button {
 }
 
 input[type="number"] {
-  -moz-appearance: textfield; /* Firefox */
+  -moz-appearance: textfield;
 }
 </style>
