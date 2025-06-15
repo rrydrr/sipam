@@ -532,10 +532,10 @@ const handleItemStatusToggle = async (order: Order, item: OrderItem) => {
           targetItem.isComplete = response.data.item.isDelivered;
           // Optionally, show a success message, e.g., using a toast notification
           // alert(response.message);
-          console.log(
-            "Item status updated successfully via API:",
-            response.message
-          );
+          // console.log(
+          //   "Item status updated successfully via API:",
+          //   response.message
+          // );
 
           // Check if all items in this order are now complete
           const allItemsComplete = targetOrder.items.every((i) => i.isComplete);
@@ -544,9 +544,9 @@ const handleItemStatusToggle = async (order: Order, item: OrderItem) => {
             // or prompt the user to mark the order as complete.
             // For now, let's assume the "Complete This Order" button is still the way
             // to mark the entire order as complete explicitly by the user.
-            console.log(
-              `All items for order ${targetOrder.id} are complete. User can now mark order as complete.`
-            );
+            // console.log(
+            //   `All items for order ${targetOrder.id} are complete. User can now mark order as complete.`
+            // );
           }
         }
       }
@@ -644,7 +644,7 @@ const handleOrderStatusToggle = async (order: Order) => {
         });
       }
 
-      console.log("Order completed successfully via API:", response.message);
+      // console.log("Order completed successfully via API:", response.message);
 
       // Refresh the dashboard data to get the latest state from the server.
       // This will typically remove the order from the 'incompleteOrders' list.
@@ -774,9 +774,9 @@ const generateOrder = async () => {
   }
 
   try {
-    console.log(
-      `Attempting to create order for user: ${userInfo.value.username}, Table: ${parsedIdMeja}`
-    );
+    // console.log(
+    //   `Attempting to create order for user: ${userInfo.value.username}, Table: ${parsedIdMeja}`
+    // );
 
     const requestBody = {
       idMeja: parsedIdMeja,
@@ -793,7 +793,7 @@ const generateOrder = async () => {
     });
 
     if (response && response.success && response.data && response.data.qrCode) {
-      console.log("Order created successfully:", response.message);
+      // console.log("Order created successfully:", response.message);
       const qrCodeBase64 = response.data.qrCode;
       const orderId = response.data.order.id;
 
